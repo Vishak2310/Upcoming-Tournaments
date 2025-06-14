@@ -102,80 +102,62 @@ export default function App() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
 
       {/* Header */}
-      <header className="flex items-center justify-between bg-gradient-to-r from-pink-200 via-pink-100 to-blue-100 px-8 py-5 shadow-lg rounded-b-3xl">
-        <h1 className="flex items-center gap-3 text-2xl md:text-3xl font-extrabold text-indigo-900 dark:text-indigo-100">
-          <span>🏆</span>
-          Offline Chess Tournaments
-        </h1>
-        <div className="flex items-center gap-4">
-          {/* Dark toggle */}
-          <button
-            onClick={() => setDarkMode(d => !d)}
-            className="p-2 rounded-full bg-white dark:bg-gray-700 shadow"
-          >
-            {darkMode ? '☀️' : '🌙'}
-          </button>
-          {/* Logo */}
-          <img
-            src="/logo.jpg"
-            alt="Upstep Academy"
-            className="h-12 w-12 md:h-14 md:w-14 object-contain rounded-full border-2 border-indigo-300 dark:border-gray-600"
-          />
-        </div>
-      </header>
+      <header className="bg-gradient-to-r from-orange-300 via-orange-200 to-yellow-100 px-6 py-8 shadow-xl rounded-b-3xl text-center">
+  <h1 className="text-4xl font-extrabold text-orange-900 tracking-tight inline-flex items-center justify-center gap-3">
+    <span>🏆</span>
+    Global Chess Tournament Finder
+  </h1>
+  <p className="mt-2 text-sm text-orange-800 italic">Browse and filter the best offline chess events</p>
+</header>
 
       {/* Filters */}
-      <div className="w-full bg-blue-100 dark:bg-gray-800 py-6">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-4 px-8">
-          {/* Search */}
-          <div>
-            <label className="block mb-1 text-gray-700 dark:text-gray-300">Search</label>
-            <input
-              type="text"
-              placeholder="Search tournaments…"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className={`${COMMON_BORDER} ${COMMON_BG} ${COMMON_TEXT} ${COMMON_PLACEHOLDER} ${COMMON_FOCUS} rounded-lg px-4 py-3 ${COMMON_TRANSITION} w-full`}
-            />
-          </div>
-          {/* Month */}
-          <div>
-            <label className="block mb-1 text-gray-700 dark:text-gray-300">Month</label>
-            <select
-              value={monthFilter}
-              onChange={e => setMonth(e.target.value)}
-              className={`${COMMON_BORDER} ${COMMON_BG} ${COMMON_TEXT} ${COMMON_FOCUS} rounded-lg px-4 py-3 ${COMMON_TRANSITION} w-full`}
-            >
-              {monthOptions.map(m => <option key={m} value={m}>{m}</option>)}
-            </select>
-          </div>
-          {/* Country */}
-          <div>
-            <label className="block mb-1 text-gray-700 dark:text-gray-300">Country</label>
-            <select
-              value={countryFilter}
-              onChange={e => setCountry(e.target.value)}
-              className={`${COMMON_BORDER} ${COMMON_BG} ${COMMON_TEXT} ${COMMON_FOCUS} rounded-lg px-4 py-3 ${COMMON_TRANSITION} w-full`}
-            >
-              {countryOptions.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-          {/* Type */}
-          <div>
-            <label className="block mb-1 text-gray-700 dark:text-gray-300">Type</label>
-            <select
-              value={typeFilter}
-              onChange={e => setType(e.target.value)}
-              className={`${COMMON_BORDER} ${COMMON_BG} ${COMMON_TEXT} ${COMMON_FOCUS} rounded-lg px-4 py-3 ${COMMON_TRANSITION} w-full`}
-            >
-              {typeOptions.map(t => <option key={t} value={t}>{t}</option>)}
-            </select>
-          </div>
-        </div>
-      </div>
+      <section className="w-full bg-orange-100 py-8">
+  <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-6 px-6">
+    <div>
+      <label className="block mb-1 text-sm font-medium text-gray-700">Search</label>
+      <input
+        type="text"
+        placeholder="Search tournaments…"
+        value={search}
+        onChange={e => setSearch(e.target.value)}
+        className={`${COMMON_BORDER} ${COMMON_BG} ${COMMON_TEXT} ${COMMON_PLACEHOLDER} ${COMMON_FOCUS} rounded-xl px-4 py-2.5 ${COMMON_TRANSITION} w-full`}
+      />
+    </div>
+    <div>
+      <label className="block mb-1 text-sm font-medium text-gray-700">Month</label>
+      <select
+        value={monthFilter}
+        onChange={e => setMonth(e.target.value)}
+        className={`${COMMON_BORDER} ${COMMON_BG} ${COMMON_TEXT} ${COMMON_FOCUS} rounded-xl px-4 py-2.5 ${COMMON_TRANSITION} w-full`}
+      >
+        {monthOptions.map(m => <option key={m} value={m}>{m}</option>)}
+      </select>
+    </div>
+    <div>
+      <label className="block mb-1 text-sm font-medium text-gray-700">Country</label>
+      <select
+        value={countryFilter}
+        onChange={e => setCountry(e.target.value)}
+        className={`${COMMON_BORDER} ${COMMON_BG} ${COMMON_TEXT} ${COMMON_FOCUS} rounded-xl px-4 py-2.5 ${COMMON_TRANSITION} w-full`}
+      >
+        {countryOptions.map(c => <option key={c} value={c}>{c}</option>)}
+      </select>
+    </div>
+    <div>
+      <label className="block mb-1 text-sm font-medium text-gray-700">Type</label>
+      <select
+        value={typeFilter}
+        onChange={e => setType(e.target.value)}
+        className={`${COMMON_BORDER} ${COMMON_BG} ${COMMON_TEXT} ${COMMON_FOCUS} rounded-xl px-4 py-2.5 ${COMMON_TRANSITION} w-full`}
+      >
+        {typeOptions.map(t => <option key={t} value={t}>{t}</option>)}
+      </select>
+    </div>
+  </div>
+</section>
 
       {/* List */}
-      <div className="w-full bg-blue-100 dark:bg-gray-800 py-10">
+      <div className="w-full bg-orange-100 dark:bg-gray-800 py-10">
         <div className="max-w-7xl mx-auto px-8 space-y-12">
           {Object.keys(grouped).length === 0
             ? <p className="text-center text-gray-600 dark:text-gray-400">No tournaments found.</p>
