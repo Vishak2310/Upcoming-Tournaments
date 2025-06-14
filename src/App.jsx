@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { TournamentCard } from './TournamentCard';
 
 // light & dark fallbacks
 const COMMON_BG          = 'bg-white dark:bg-gray-800';
@@ -169,24 +170,7 @@ export default function App() {
                       <h3 className="text-2xl font-semibold text-gray-700 dark:text-gray-300 mb-3">{mon}</h3>
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
                         {arr.map(f => (
-                          <div
-                            key={f.id}
-                            className={`${COMMON_BG} ${COMMON_SHADOW} rounded-xl transform hover:-translate-y-1 ${COMMON_TRANSITION}`}
-                          >
-                            <div className="p-6">
-                              <h4 className="text-lg font-semibold truncate text-gray-900 dark:text-gray-100">
-                                {f.name.replace(/\.pdf$/i, '')}
-                              </h4>
-                              <a
-                                href={f.webViewLink}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-block mt-4 px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition"
-                              >
-                                View PDF
-                              </a>
-                            </div>
-                          </div>
+                          <TournamentCard key={f.id} file={f} />
                         ))}
                       </div>
                     </div>
