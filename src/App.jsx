@@ -35,6 +35,16 @@ export default function App() {
   const [monthFilter, setMonth] = useState('All');
   const [countryFilter, setCountry] = useState('All');
   const [typeFilter, setType]   = useState('All');
+  const filteredFiles = files.filter(file => {
+  const name = file.name.toLowerCase();
+
+  const matchesSearch = name.includes(search.toLowerCase());
+  const matchesMonth = monthFilter === 'All' || name.includes(monthFilter.toLowerCase());
+  const matchesCountry = countryFilter === 'All' || name.includes(countryFilter.toLowerCase());
+  const matchesType = typeFilter === 'All' || name.includes(typeFilter.toLowerCase());
+
+  return matchesSearch && matchesMonth && matchesCountry && matchesType;
+});
 
   // fetch PDF list
   useEffect(() => {
@@ -87,18 +97,6 @@ export default function App() {
       );
     })
   , [files, search, monthFilter, countryFilter, typeFilter]);
-
-  // group by country→month
-  const grouped = useMemo(() => {
-    return filtered.reduce((acc, f) => {
-      const { country, monthYear } = parseFilename(f.name);
-      acc[country] = acc[country] || {};
-      acc[country][monthYear] = acc[country][monthYear] || [];
-      acc[country][monthYear].push(f);
-      return acc;
-    }, {});
-  }, [filtered]);
-
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
 
@@ -160,24 +158,15 @@ export default function App() {
       {/* List */}
       <div className="w-full bg-orange-100 dark:bg-gray-800 py-10">
         <div className="max-w-7xl mx-auto px-8 space-y-12">
-          {Object.keys(grouped).length === 0
-            ? <p className="text-center text-gray-600 dark:text-gray-400">No tournaments found.</p>
-            : Object.entries(grouped).map(([country, months]) => (
-                <section key={country}>
-                  <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-4">{country}</h2>
-                  {Object.entries(months).map(([mon, arr]) => (
-                    <div key={mon} className="mb-8">
-                      <h3 className="text-2xl font-semibold text-gray-700 dark:text-gray-300 mb-3">{mon}</h3>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-                        {arr.map(f => (
-                          <TournamentCard key={f.id} file={f} />
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </section>
-              ))
-          }
+          {filteredFiles.length === 0 ? (
+  <p className="text-center text-gray-600">No tournaments found.</p>
+) : (
+  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+    {filteredFiles.map(f => (
+      <TournamentCard key={f.id} file={f} />
+    ))}
+  </div>
+)}
         </div>
       </div>
     </div>
