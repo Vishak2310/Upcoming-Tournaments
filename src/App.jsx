@@ -13,18 +13,34 @@ const COMMON_SHADOW      = 'shadow-lg hover:shadow-2xl';
 const API_KEY   = import.meta.env.VITE_API_KEY;
 const FOLDER_ID = import.meta.env.VITE_FOLDER_ID;
 
-// parse name "14-15 June2025 Classical Paris, France.pdf"
+// parse name "14-15 June 2025 Classical Paris, France.pdf"
 function parseFilename(name) {
   const noExt = name.replace(/\.pdf$/i, '');
-  const [range, monthYear, type, ...rest] = noExt.split(' ');
-  const locationCountry = rest.join(' ');
-  const [location, countryRaw] = locationCountry.split(',').map(s => s.trim());
+  const parts = noExt.split(' ');
+
+  const range = parts.shift() || '';
+
+  // month & year might be separated by a space or concatenated
+  let monthYear = '';
+  if (parts.length >= 2 && /^\d{4}$/.test(parts[1])) {
+    monthYear = `${parts.shift()} ${parts.shift()}`;
+  } else {
+    monthYear = parts.shift() || '';
+  }
+
+  const type = parts.shift() || '';
+
+  const locationCountry = parts.join(' ');
+  const [location, countryRaw] = locationCountry
+    .split(',')
+    .map(s => s.trim());
+
   return {
-    dateRange: range || '',
-    monthYear: monthYear || '',
-    type:      type      || '',
-    location:  location  || '',
-    country:   countryRaw || 'Unknown'
+    dateRange: range,
+    monthYear,
+    type,
+    location: location || '',
+    country: countryRaw || 'Unknown'
   };
 }
 
