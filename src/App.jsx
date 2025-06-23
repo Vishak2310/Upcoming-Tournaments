@@ -49,22 +49,37 @@ export default function App() {
   // fetch PDF list
   useEffect(() => {
     if (!API_KEY || !FOLDER_ID) {
-      console.error('Missing VITE_API_KEY or VITE_FOLDER_ID');
-      return;
-    }
-    const q   = `'${FOLDER_ID}' in parents and mimeType='application/pdf'`;
-    const url =
-      `https://www.googleapis.com/drive/v3/files`
-      + `?q=${encodeURIComponent(q)}`
-      + `&supportsAllDrives=true`
-      + `&fields=files(id,name,webViewLink)`
-      + `&key=${API_KEY}`;
+    console.error('Missing VITE_API_KEY or VITE_FOLDER_ID');
+    return;
+  }
 
-    fetch(url)
-      .then(r => r.json())
-      .then(data => setFiles(data.files || []))
-      .catch(console.error);
-  }, []);
+  const fetchAllFiles = async () => {
+    let allFiles = [];
+    let nextPageToken = null;
+
+    do {
+      const q = `'${FOLDER_ID}' in parents and mimeType='application/pdf'`;
+      const url = new URL('https://www.googleapis.com/drive/v3/files');
+      url.searchParams.set('q', q);
+      url.searchParams.set('supportsAllDrives', 'true');
+      url.searchParams.set('includeItemsFromAllDrives', 'true');
+      url.searchParams.set('fields', 'nextPageToken, files(id,name,webViewLink)');
+      url.searchParams.set('key', API_KEY);
+      if (nextPageToken) {
+        url.searchParams.set('pageToken', nextPageToken);
+      }
+
+      const response = await fetch(url.toString());
+      const data = await response.json();
+      allFiles = [...allFiles, ...(data.files || [])];
+      nextPageToken = data.nextPageToken;
+    } while (nextPageToken);
+
+    setFiles(allFiles);
+  };
+
+  fetchAllFiles().catch(console.error);
+}, []);
 
   // toggle the <html class="dark">
   useEffect(() => {
