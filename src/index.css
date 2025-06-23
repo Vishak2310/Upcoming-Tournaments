@@ -1,3 +1,19 @@
+/* src/index.css */
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Update this CSS for the scrolling text animation */
+@keyframes scrollText {
+  0% { transform: translateX(0%); }
+  100% { transform: translateX(-100%); }
+}
+
+.animate-scroll {
+  /* Drastically increased duration for a much slower scroll.
+     You can adjust 80s, 100s, or even more based on how slow you want it. */
+  animation: scrollText 200s linear infinite; /* Increased duration for much slower scroll */
+  white-space: nowrap;
+  display: inline-block;
+}
