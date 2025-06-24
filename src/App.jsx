@@ -1,11 +1,11 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { TournamentCard } from './TournamentCard';
 
-// light & dark fallbacks
-const COMMON_BG           = 'bg-white dark:bg-gray-800';
-const COMMON_BORDER       = 'border border-gray-300 dark:border-gray-600';
-const COMMON_TEXT         = 'text-gray-800 dark:text-gray-100';
-const COMMON_PLACEHOLDER  = 'placeholder-gray-500 dark:placeholder-400';
+// Removed dark mode specific fallbacks - adjusted for light mode only
+const COMMON_BG           = 'bg-white'; // No dark:bg-gray-800
+const COMMON_BORDER       = 'border border-gray-300'; // No dark:border-gray-600
+const COMMON_TEXT         = 'text-gray-800'; // No dark:text-gray-100
+const COMMON_PLACEHOLDER  = 'placeholder-gray-500'; // No dark:placeholder-400
 const COMMON_FOCUS        = 'focus:outline-none focus:ring-2 focus:ring-blue-400';
 const COMMON_TRANSITION   = 'transition';
 const COMMON_SHADOW       = 'shadow-lg hover:shadow-2xl';
@@ -49,7 +49,7 @@ function parseFilename(name) {
 
 export default function App() {
   const [files, setFiles]         = useState([]);
-  const [darkMode, setDarkMode]   = useState(false);
+  // const [darkMode, setDarkMode]   = useState(false); // REMOVED: darkMode state
   const [search, setSearch]       = useState('');
   const [monthFilter, setMonth]   = useState('All');
   const [countryFilter, setCountry] = useState('All');
@@ -106,10 +106,12 @@ export default function App() {
     fetchAllFiles().catch(console.error);
   }, []);
 
-  // toggle the <html class="dark">
+  // REMOVED: useEffect to toggle dark mode class on document.documentElement
+  /*
   useEffect(() => {
     document.documentElement.classList.toggle('dark', darkMode);
   }, [darkMode]);
+  */
 
   // This is the final filtered list of files that are displayed
   const filteredFiles = useMemo(() =>
@@ -254,15 +256,39 @@ export default function App() {
 
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+    // Removed dark:bg-gray-900 from the main div
+    <div className="min-h-screen bg-gray-50 transition-colors duration-300">
 
       {/* Header */}
-      <header className="bg-gradient-to-r from-orange-300 via-orange-200 to-yellow-100 px-6 py-8 shadow-xl rounded-b-3xl text-center">
+      {/* Removed flex, justify-center, items-center if not needed for other elements */}
+      <header className="bg-gradient-to-r from-orange-300 via-orange-200 to-yellow-100 px-6 py-8 shadow-xl rounded-b-3xl text-center relative">
+        
+        {/* REMOVED: Dark Mode Toggle Button */}
+        {/*
+        <button
+          onClick={() => setDarkMode(!darkMode)}
+          className="absolute top-1/2 -translate-y-1/2 right-4 p-2 rounded-full bg-transparent text-orange-800 dark:text-gray-100 hover:bg-orange-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-orange-400 dark:focus:ring-gray-500 transition-colors duration-200"
+          aria-label={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+        >
+          {darkMode ? (
+            // Sun icon for light mode
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h1M3 12H2m8.05-8.05l-.707-.707M16.95 16.95l.707.707M4.05 16.95l.707.707M16.95 4.05l.707-.707M12 7a5 5 0 110 10 5 5 0 010-10z" />
+            </svg>
+          ) : (
+            // Moon icon for dark mode
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+            </svg>
+          )}
+        </button>
+        */}
+
         <h1 className="text-4xl font-extrabold text-orange-900 tracking-tight inline-flex items-center justify-center gap-3">
           <span>🏆</span>
           Global Chess Tournament Finder
         </h1>
-        <p className="mt-2 text-sm text-orange-800 italic">Browse and filter the best offline chess events</p>
+        <p className="mt-2 text-sm text-orange-800 italic">Simplifying your search for international chess tournaments</p>
       </header>
 
       {/* Scrolling Disclaimer Banner */}
@@ -358,11 +384,10 @@ export default function App() {
                 ))}
               </select>
             </div>
-            {/* Clear Filters Button - Refined */}
+            {/* Clear Filters Button */}
             <div className="mt-4 md:mt-0">
               <button
                 onClick={clearFilters}
-                // Conditionally apply classes based on whether filters are active
                 className={`
                   w-full
                   inline-flex items-center justify-center
@@ -371,13 +396,13 @@ export default function App() {
                   shadow-sm
                   text-sm font-medium
                   ${areFiltersActive
-                    ? 'bg-red-500 hover:bg-red-600 text-white focus:ring-red-300' // Active state
-                    : 'bg-gray-200 text-gray-500 cursor-not-allowed border border-gray-300' // Inactive state
+                    ? 'bg-red-500 hover:bg-red-600 text-white focus:ring-red-300'
+                    : 'bg-gray-200 text-gray-500 cursor-not-allowed border border-gray-300'
                   }
                   focus:outline-none focus:ring-2 focus:ring-offset-2
                   ${COMMON_TRANSITION}
                 `}
-                disabled={!areFiltersActive} // Disable button if no filters are active
+                disabled={!areFiltersActive}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -390,7 +415,8 @@ export default function App() {
       </section>
 
       {/* List */}
-      <div className="w-full bg-orange-100 dark:bg-gray-800 py-10">
+      {/* Removed dark:bg-gray-800 from the List section div */}
+      <div className="w-full bg-orange-100 py-10">
         <div className="max-w-7xl mx-auto px-8 space-y-12">
           {error && (
             <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
@@ -400,7 +426,7 @@ export default function App() {
           )}
 
           {loading && !error ? (
-            <div className="text-center text-gray-600 dark:text-gray-300 py-10">
+            <div className="text-center text-gray-600 py-10"> {/* Removed dark:text-gray-300 */}
               <svg className="animate-spin h-8 w-8 text-orange-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -408,12 +434,12 @@ export default function App() {
               <p className="mt-3 text-lg font-medium">Loading tournaments...</p>
             </div>
           ) : filteredFiles.length === 0 && !error ? (
-            <div className="text-center text-gray-600 dark:text-gray-300 py-10">
+            <div className="text-center text-gray-600 py-10"> {/* Removed dark:text-gray-300 */}
               <p className="text-xl font-semibold mb-2">No tournaments found!</p>
               <p className="text-md">
                 Try adjusting your filters or clearing them to see more results.
               </p>
-              {areFiltersActive && ( // Conditionally show clear filters button in empty state
+              {areFiltersActive && (
                 <button
                   onClick={clearFilters}
                   className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-orange-500 hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"

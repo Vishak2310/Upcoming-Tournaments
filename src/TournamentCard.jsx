@@ -1,9 +1,9 @@
 import React from 'react';
 
-// Common Tailwind CSS classes for consistency
-const COMMON_BG           = 'bg-white dark:bg-gray-800';
-const COMMON_BORDER       = 'border border-gray-200 dark:border-gray-700';
-const COMMON_TEXT         = 'text-gray-800 dark:text-gray-100';
+// Common Tailwind CSS classes for consistency - Removed dark: classes
+const COMMON_BG           = 'bg-white'; // Removed dark:bg-gray-800
+const COMMON_BORDER       = 'border border-gray-200'; // Removed dark:border-gray-700
+const COMMON_TEXT         = 'text-gray-800'; // Removed dark:text-gray-100
 const COMMON_SHADOW       = 'shadow-lg hover:shadow-xl';
 const COMMON_TRANSITION   = 'transition duration-300 ease-in-out';
 
@@ -69,11 +69,11 @@ export function TournamentCard({ file }) {
         {/* Type and Month/Year at the top right */}
         <div className="flex justify-between items-start mb-2">
           {type && (
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-700 dark:text-orange-100">
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
               {type}
             </span>
           )}
-          <span className="text-sm font-semibold text-gray-500 dark:text-gray-400">
+          <span className="text-sm font-semibold text-gray-500">
             {monthYear}
           </span>
         </div>
@@ -84,7 +84,7 @@ export function TournamentCard({ file }) {
         </h3>
 
         {/* Enhanced Details with Icons */}
-        <div className="space-y-2 text-gray-700 dark:text-gray-300 text-sm mb-4">
+        <div className="space-y-2 text-gray-700 text-sm mb-4"> {/* Removed dark:text-gray-300 */}
           {/* Date Range */}
           {dateRange && (
             <p className="flex items-center">
@@ -122,7 +122,7 @@ export function TournamentCard({ file }) {
           </svg>
           View PDF
         </a>
-        {/* Placeholder for Download PDF, currently links to View PDF */}
+        {/* Download PDF Button */}
         <a
           href={webViewLink} // For actual download, this would be a direct download link if available
           target="_blank"
