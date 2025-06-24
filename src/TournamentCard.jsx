@@ -1,96 +1,140 @@
 import React from 'react';
-import { FileText, MapPin, CalendarDays, Download } from 'lucide-react'; // Import the Download icon
 
-// Note: parseFilename is defined here for direct use within TournamentCard.
-// If you move it to a utils file, ensure to import it correctly here.
+// Common Tailwind CSS classes for consistency
+const COMMON_BG           = 'bg-white dark:bg-gray-800';
+const COMMON_BORDER       = 'border border-gray-200 dark:border-gray-700';
+const COMMON_TEXT         = 'text-gray-800 dark:text-gray-100';
+const COMMON_SHADOW       = 'shadow-lg hover:shadow-xl';
+const COMMON_TRANSITION   = 'transition duration-300 ease-in-out';
+
+// parse name "14-15 June2025 Classical Paris, France.pdf"
 function parseFilename(name) {
-    if (!name) return { dateRange: '', monthYear: '', type: '', location: '', country: 'Unknown' };
-    const noExt = name.replace(/\.pdf$/i, '');
-    const parts = noExt.split(' ');
-    // Added a more robust check for minimum parts needed for parsing
-    // This handles cases where filename might be shorter than expected structure.
-    if (parts.length < 4) {
-        // Attempt to extract what's available
-        const dateRange = parts[0] || '';
-        const monthYear = parts[1] || '';
-        const type = parts[2] || '';
-        const locationCountry = parts.slice(3).join(' '); // This will be empty if parts.length < 4
-        const [location = '', countryRaw = 'Unknown'] = locationCountry.split(',').map(s => s.trim());
-        return { dateRange, monthYear, type, location, country: countryRaw };
-    }
+  const noExt = name.replace(/\.pdf$/i, '');
+  const parts = noExt.split(' ').filter(p => p.trim() !== '');
 
-    const [range, monthYear, type, ...rest] = parts;
-    const locationCountry = rest.join(' ');
-    const [location = '', countryRaw = 'Unknown'] = locationCountry.split(',').map(s => s.trim());
-    return { dateRange: range, monthYear, type, location, country: countryRaw };
+  let dateRange = '';
+  let monthYear = '';
+  let type = '';
+  let locationCountry = '';
+
+  if (parts.length > 0) {
+    dateRange = parts[0];
+  }
+  if (parts.length > 1) {
+    monthYear = parts[1];
+  }
+  if (parts.length > 2) {
+    type = parts[2];
+  }
+  if (parts.length > 3) {
+    locationCountry = parts.slice(3).join(' ');
+  }
+
+  const [location, countryRaw] = locationCountry.split(',').map(s => s.trim());
+
+  return {
+    dateRange: dateRange,
+    monthYear: monthYear,
+    type:      type,
+    location:  location,
+    country:   countryRaw || 'Unknown'
+  };
 }
 
 export function TournamentCard({ file }) {
-    const { dateRange, monthYear, type, location, country } = parseFilename(file?.name);
+  const { name, webViewLink } = file;
+  const { dateRange, monthYear, type, location, country } = parseFilename(name);
 
-    // Get API_KEY from environment variables, same as in App.jsx
-    const API_KEY = import.meta.env.VITE_API_KEY;
+  // Function to format date range for display
+  const formatDisplayDate = (dateRange, monthYear) => {
+    const month = monthYear.match(/[A-Za-z]+/)?.[0] || '';
+    const year = monthYear.match(/\d{4}/)?.[0] || '';
 
-    // Function to handle PDF download
-    const handleDownload = () => {
-        if (!file?.id || !API_KEY) {
-            console.error('File ID or API Key is missing, cannot download.');
-            return;
-        }
-        // Construct the download URL using the file ID and your API Key
-        // The 'alt=media' parameter is crucial for directly downloading the file content
-        const downloadUrl = `https://www.googleapis.com/drive/v3/files/${file.id}?alt=media&key=${API_KEY}`;
+    // Handle single day vs. range
+    if (dateRange.includes('-')) {
+      const [startDay, endDay] = dateRange.split('-');
+      if (startDay === endDay) {
+        return `${startDay} ${month} ${year}`;
+      }
+      return `${dateRange} ${month} ${year}`;
+    }
+    return `${dateRange} ${month} ${year}`;
+  };
 
-        // Create a temporary anchor element to trigger the download
-        const link = document.createElement('a');
-        link.href = downloadUrl;
-        // The 'download' attribute suggests a filename. Use file?.name for this.
-        link.setAttribute('download', file?.name || 'tournament.pdf');
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    };
+  const displayDate = formatDisplayDate(dateRange, monthYear);
 
-    return (
-        <div className="group bg-white rounded-xl p-4 shadow-md flex flex-col border border-orange-100 transition-all duration-300 ease-in-out transform hover:shadow-2xl hover:border-orange-300 hover:scale-[1.015]">
-            <div className="space-y-2">
-                <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold uppercase tracking-wide text-orange-600 bg-orange-100 px-2 py-0.5 rounded">
-                        {type || 'Tournament'}
-                    </span>
-                    <span className="text-gray-400 italic">{monthYear}</span>
-                </div>
-                <h4 className="text-base font-semibold text-gray-800 leading-snug">
-                    {file?.name?.replace(/\.pdf$/i, '') || 'Untitled Tournament'}
-                </h4>
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <CalendarDays className="h-4 w-4 text-orange-500 transition-transform duration-300 ease-in-out group-hover:rotate-6" />
-                    <span>{dateRange}</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <MapPin className="h-4 w-4 text-orange-500 transition-transform duration-300 ease-in-out group-hover:-rotate-6" />
-                    <span>{location}, {country}</span>
-                </div>
-            </div>
-            <div className="pt-4 mt-auto flex space-x-2"> {/* Added flex and space-x-2 */}
-                {/* View PDF Button */}
-                <a
-                    href={file?.webViewLink || '#'}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex-1 block px-4 py-1.5 bg-orange-500 text-white text-sm font-medium rounded-md transition-all duration-300 ease-in-out group-hover:bg-orange-600 text-center"
-                >
-                    <FileText className="inline-block mr-1 -mt-1 transition-transform duration-300 ease-in-out group-hover:scale-110" /> View PDF
-                </a>
-
-                {/* Download PDF Button */}
-                <button
-                    onClick={handleDownload}
-                    className="flex-1 block px-4 py-1.5 border border-orange-400 text-orange-700 bg-white text-sm font-medium rounded-md transition-all duration-300 ease-in-out hover:bg-orange-50 hover:text-orange-800 text-center"
-                >
-                    <Download className="inline-block mr-1 -mt-1 transition-transform duration-300 ease-in-out group-hover:scale-110" /> Download PDF
-                </button>
-            </div>
+  return (
+    <div className={`${COMMON_BG} ${COMMON_BORDER} ${COMMON_SHADOW} ${COMMON_TRANSITION} rounded-xl p-6 flex flex-col justify-between`}>
+      <div>
+        {/* Type and Month/Year at the top right */}
+        <div className="flex justify-between items-start mb-2">
+          {type && (
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-700 dark:text-orange-100">
+              {type}
+            </span>
+          )}
+          <span className="text-sm font-semibold text-gray-500 dark:text-gray-400">
+            {monthYear}
+          </span>
         </div>
-    );
+
+        {/* Tournament Name (filename without extension) */}
+        <h3 className={`${COMMON_TEXT} text-lg font-bold mb-3 leading-tight`}>
+          {name.replace(/\.pdf$/i, '')}
+        </h3>
+
+        {/* Enhanced Details with Icons */}
+        <div className="space-y-2 text-gray-700 dark:text-gray-300 text-sm mb-4">
+          {/* Date Range */}
+          {dateRange && (
+            <p className="flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              {displayDate}
+            </p>
+          )}
+
+          {/* Location */}
+          {location && (
+            <p className="flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              {location}{country && `, ${country}`}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Buttons */}
+      <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 mt-4">
+        <a
+          href={webViewLink}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex-1 inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-orange-500 hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+          </svg>
+          View PDF
+        </a>
+        {/* Placeholder for Download PDF, currently links to View PDF */}
+        <a
+          href={webViewLink} // For actual download, this would be a direct download link if available
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex-1 inline-flex items-center justify-center px-4 py-2 border border-orange-400 rounded-md shadow-sm text-sm font-medium text-orange-700 bg-white hover:bg-orange-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-400"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+          </svg>
+          Download PDF
+        </a>
+      </div>
+    </div>
+  );
 }
