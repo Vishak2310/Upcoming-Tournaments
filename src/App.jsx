@@ -1,16 +1,9 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { TournamentCard } from './TournamentCard';
 
-// Removed dark mode specific fallbacks - adjusted for light mode only
-const COMMON_BG           = 'bg-white'; // No dark:bg-gray-800
-const COMMON_BORDER       = 'border border-gray-300'; // No dark:border-gray-600
-const COMMON_TEXT         = 'text-gray-800'; // No dark:text-gray-100
-const COMMON_PLACEHOLDER  = 'placeholder-gray-500'; // No dark:placeholder-400
-const COMMON_FOCUS        = 'focus:outline-none focus:ring-2 focus:ring-blue-400';
-const COMMON_TRANSITION   = 'transition';
-const COMMON_SHADOW       = 'shadow-lg hover:shadow-2xl';
-
-const API_KEY     = import.meta.env.VITE_API_KEY;
+// You would typically define your API_KEY and FOLDER_ID in a .env file
+// and access them via import.meta.env (for Vite) or process.env (for Create-React-App)
+const API_KEY = import.meta.env.VITE_API_KEY;
 const FOLDER_ID = import.meta.env.VITE_FOLDER_ID;
 
 // parse name "14-15 June2025 Classical Paris, France.pdf"
@@ -38,26 +31,56 @@ function parseFilename(name) {
 
   const [location, countryRaw] = locationCountry.split(',').map(s => s.trim());
 
+  // --- START MODIFIED LOGIC FOR START DATE ---
+  let startDate = null;
+  const dayMatch = dateRange.match(/^\d+/); // Get the first number in the dateRange (e.g., "14" from "14-15")
+  if (dayMatch && monthYear) {
+    // Extract month name (e.g., "June" from "June2025") and year (e.g., "2025")
+    const monthNameMatch = monthYear.match(/[a-zA-Z]+/);
+    const yearMatch = monthYear.match(/\d{4}/);
+
+    if (monthNameMatch && yearMatch) {
+      try {
+        // Construct a date string in a format Date.parse can understand
+        const dateString = `${monthNameMatch[0]} ${dayMatch[0]}, ${yearMatch[0]}`;
+        startDate = new Date(dateString);
+      } catch (e) {
+        console.error("Error parsing start date for:", name, e);
+        startDate = null; // Set to null if parsing fails
+      }
+    }
+  }
+  // --- END MODIFIED LOGIC FOR START DATE ---
+
   return {
     dateRange: dateRange,
     monthYear: monthYear,
     type:      type,
     location:  location,
-    country:   countryRaw || 'Unknown'
+    country:   countryRaw || 'Unknown',
+    startDate: startDate // Add the new startDate property
   };
 }
 
-export default function App() {
-  const [files, setFiles]         = useState([]);
-  // const [darkMode, setDarkMode]   = useState(false); // REMOVED: darkMode state
-  const [search, setSearch]       = useState('');
-  const [monthFilter, setMonth]   = useState('All');
-  const [countryFilter, setCountry] = useState('All');
-  const [typeFilter, setType]     = useState('All');
-  const [loading, setLoading]     = useState(true);
-  const [error, setError]         = useState(null);
 
-  // fetch PDF list
+export default function App() {
+  const [files, setFiles] = useState([]);
+  const [search, setSearch] = useState('');
+  const [monthFilter, setMonth] = useState('All');
+  const [countryFilter, setCountry] = useState('All');
+  const [typeFilter, setType] = useState('All');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Common Tailwind CSS classes for consistency
+  const COMMON_BORDER       = 'border border-gray-300';
+  const COMMON_BG           = 'bg-white';
+  const COMMON_TEXT         = 'text-gray-800';
+  const COMMON_PLACEHOLDER  = 'placeholder-gray-500';
+  const COMMON_FOCUS        = 'focus:outline-none focus:ring-2 focus:ring-blue-400';
+  const COMMON_TRANSITION   = 'transition';
+
+  // fetch PDF list from Google Drive
   useEffect(() => {
     if (!API_KEY || !FOLDER_ID) {
       console.error('Missing VITE_API_KEY or VITE_FOLDER_ID');
@@ -106,31 +129,60 @@ export default function App() {
     fetchAllFiles().catch(console.error);
   }, []);
 
-  // REMOVED: useEffect to toggle dark mode class on document.documentElement
-  /*
-  useEffect(() => {
-    document.documentElement.classList.toggle('dark', darkMode);
-  }, [darkMode]);
-  */
+  // This is the final filtered and *sorted* list of files that are displayed
+  const filteredFiles = useMemo(() => {
+      const now = new Date(); // Get today's date and time for comparison
 
-  // This is the final filtered list of files that are displayed
-  const filteredFiles = useMemo(() =>
-    files.filter(f => {
-      const { monthYear, country, type } = parseFilename(f.name);
-      const matchesSearch = f.name.toLowerCase().includes(search.toLowerCase());
-      const matchesMonth = monthFilter === 'All' || monthYear === monthFilter;
-      const matchesCountry = countryFilter === 'All' || country === countryFilter;
-      const matchesType = typeFilter === 'All' || type === typeFilter;
-      return matchesSearch && matchesMonth && matchesCountry && matchesType;
-    })
-  , [files, search, monthFilter, countryFilter, typeFilter]);
+      // 1. Filter the files based on search and selected filters
+      let filtered = files.filter(f => {
+          // Ensure parsedData is attached, even if it was done elsewhere,
+          // it's good to have it consistent here for safety within the memo.
+          const parsed = f.parsedData || parseFilename(f.name); // Use existing parsedData or parse if not present
+          f.parsedData = parsed; // Attach parsed data to file object for easier access
+
+          const matchesSearch = f.name.toLowerCase().includes(search.toLowerCase());
+          const matchesMonth = monthFilter === 'All' || parsed.monthYear === monthFilter;
+          const matchesCountry = countryFilter === 'All' || parsed.country === countryFilter;
+          const matchesType = typeFilter === 'All' || parsed.type === typeFilter;
+
+          // Logic to filter out past events in the default view:
+          // Only show events from today onwards by default if no specific filters are active.
+          // If filters (month, country, type, search) are applied, assume the user might want to see all dates matching those filters.
+          const isAnyFilterActive = search !== '' || monthFilter !== 'All' || countryFilter !== 'All' || typeFilter !== 'All';
+
+          if (!isAnyFilterActive && parsed.startDate && parsed.startDate < now) {
+              // In the default "All" view with no other filters, exclude past events.
+              return false;
+          }
+
+          return matchesSearch && matchesMonth && matchesCountry && matchesType;
+      });
+
+      // 2. Sort the filtered files by their start date (earliest upcoming first)
+      filtered.sort((a, b) => {
+          const dateA = a.parsedData.startDate;
+          const dateB = b.parsedData.startDate;
+
+          // Handle cases where startDate might be null or invalid
+          // Invalid dates (null) will be pushed to the end of the list.
+          if (!dateA && !dateB) return 0; // Both invalid, maintain original relative order
+          if (!dateA) return 1;          // A is invalid, push A towards the end
+          if (!dateB) return -1;         // B is invalid, push B towards the end (A comes before B)
+
+          // Sort valid dates in ascending order (earliest date first)
+          return dateA.getTime() - dateB.getTime();
+      });
+
+      return filtered;
+  }, [files, search, monthFilter, countryFilter, typeFilter]); // Dependencies remain the same
 
 
   // Helper function to get distinct options and their counts for a given attribute
   const getFilteredCounts = (attribute, currentMonth, currentCountry, currentType, currentSearch) => {
     const counts = new Map();
     files.forEach(file => {
-      const { monthYear, country, type } = parseFilename(file.name);
+      const parsed = parseFilename(file.name); // Re-parse each file for consistent data
+      const { monthYear, country, type } = parsed;
       const matchesSearch = file.name.toLowerCase().includes(currentSearch.toLowerCase());
 
       const matchesOtherFilters =
@@ -139,7 +191,7 @@ export default function App() {
         (attribute === 'type'      || currentType === 'All' || type === currentType);
 
       if (matchesSearch && matchesOtherFilters) {
-        const value = parseFilename(file.name)[attribute];
+        const value = parsed[attribute];
         if (value) {
           counts.set(value, (counts.get(value) || 0) + 1);
         }
@@ -247,43 +299,19 @@ export default function App() {
   }, [search, monthFilter, countryFilter, typeFilter]);
 
   // Function to clear all filters
-  const clearFilters = () => {
+  const clearFilters = useCallback(() => {
     setSearch('');
     setMonth('All');
     setCountry('All');
     setType('All');
-  };
+  }, []);
 
 
   return (
-    // Removed dark:bg-gray-900 from the main div
     <div className="min-h-screen bg-gray-50 transition-colors duration-300">
 
       {/* Header */}
-      {/* Removed flex, justify-center, items-center if not needed for other elements */}
       <header className="bg-gradient-to-r from-orange-300 via-orange-200 to-yellow-100 px-6 py-8 shadow-xl rounded-b-3xl text-center relative">
-        
-        {/* REMOVED: Dark Mode Toggle Button */}
-        {/*
-        <button
-          onClick={() => setDarkMode(!darkMode)}
-          className="absolute top-1/2 -translate-y-1/2 right-4 p-2 rounded-full bg-transparent text-orange-800 dark:text-gray-100 hover:bg-orange-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-orange-400 dark:focus:ring-gray-500 transition-colors duration-200"
-          aria-label={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
-        >
-          {darkMode ? (
-            // Sun icon for light mode
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h1M3 12H2m8.05-8.05l-.707-.707M16.95 16.95l.707.707M4.05 16.95l.707.707M16.95 4.05l.707-.707M12 7a5 5 0 110 10 5 5 0 010-10z" />
-            </svg>
-          ) : (
-            // Moon icon for dark mode
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-            </svg>
-          )}
-        </button>
-        */}
-
         <h1 className="text-4xl font-extrabold text-orange-900 tracking-tight inline-flex items-center justify-center gap-3">
           <span>🏆</span>
           Global Chess Tournament Finder
@@ -414,8 +442,7 @@ export default function App() {
         </div>
       </section>
 
-      {/* List */}
-      {/* Removed dark:bg-gray-800 from the List section div */}
+      {/* List Section */}
       <div className="w-full bg-orange-100 py-10">
         <div className="max-w-7xl mx-auto px-8 space-y-12">
           {error && (
@@ -426,7 +453,7 @@ export default function App() {
           )}
 
           {loading && !error ? (
-            <div className="text-center text-gray-600 py-10"> {/* Removed dark:text-gray-300 */}
+            <div className="text-center text-gray-600 py-10">
               <svg className="animate-spin h-8 w-8 text-orange-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -434,7 +461,7 @@ export default function App() {
               <p className="mt-3 text-lg font-medium">Loading tournaments...</p>
             </div>
           ) : filteredFiles.length === 0 && !error ? (
-            <div className="text-center text-gray-600 py-10"> {/* Removed dark:text-gray-300 */}
+            <div className="text-center text-gray-600 py-10">
               <p className="text-xl font-semibold mb-2">No tournaments found!</p>
               <p className="text-md">
                 Try adjusting your filters or clearing them to see more results.
@@ -457,7 +484,6 @@ export default function App() {
           )}
         </div>
       </div>
-
     </div>
   );
 }
