@@ -1,12 +1,9 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { TournamentCard } from './TournamentCard';
 
-// You would typically define your API_KEY and FOLDER_ID in a .env file
-// and access them via import.meta.env (for Vite) or process.env (for Create-React-App)
 const API_KEY = import.meta.env.VITE_API_KEY;
 const FOLDER_ID = import.meta.env.VITE_FOLDER_ID;
 
-// parse name "14-15 June2025 Classical Paris, France.pdf"
 function parseFilename(name) {
   const noExt = name.replace(/\.pdf$/i, '');
   const parts = noExt.split(' ').filter(p => p.trim() !== '');
@@ -31,26 +28,22 @@ function parseFilename(name) {
 
   const [location, countryRaw] = locationCountry.split(',').map(s => s.trim());
 
-  // --- START MODIFIED LOGIC FOR START DATE ---
   let startDate = null;
-  const dayMatch = dateRange.match(/^\d+/); // Get the first number in the dateRange (e.g., "14" from "14-15")
+  const dayMatch = dateRange.match(/^\d+/);
   if (dayMatch && monthYear) {
-    // Extract month name (e.g., "June" from "June2025") and year (e.g., "2025")
     const monthNameMatch = monthYear.match(/[a-zA-Z]+/);
     const yearMatch = monthYear.match(/\d{4}/);
 
     if (monthNameMatch && yearMatch) {
       try {
-        // Construct a date string in a format Date.parse can understand
         const dateString = `${monthNameMatch[0]} ${dayMatch[0]}, ${yearMatch[0]}`;
         startDate = new Date(dateString);
       } catch (e) {
         console.error("Error parsing start date for:", name, e);
-        startDate = null; // Set to null if parsing fails
+        startDate = null;
       }
     }
   }
-  // --- END MODIFIED LOGIC FOR START DATE ---
 
   return {
     dateRange: dateRange,
@@ -58,7 +51,7 @@ function parseFilename(name) {
     type:      type,
     location:  location,
     country:   countryRaw || 'Unknown',
-    startDate: startDate // Add the new startDate property
+    startDate: startDate
   };
 }
 
@@ -69,18 +62,19 @@ export default function App() {
   const [monthFilter, setMonth] = useState('All');
   const [countryFilter, setCountry] = useState('All');
   const [typeFilter, setType] = useState('All');
+  const [statusFilter, setStatusFilter] = useState('Upcoming');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Common Tailwind CSS classes for consistency
   const COMMON_BORDER       = 'border border-gray-300';
   const COMMON_BG           = 'bg-white';
   const COMMON_TEXT         = 'text-gray-800';
   const COMMON_PLACEHOLDER  = 'placeholder-gray-500';
   const COMMON_FOCUS        = 'focus:outline-none focus:ring-2 focus:ring-blue-400';
   const COMMON_TRANSITION   = 'transition';
+  const COMMON_FORM_HEIGHT  = 'h-11';
 
-  // fetch PDF list from Google Drive
+
   useEffect(() => {
     if (!API_KEY || !FOLDER_ID) {
       console.error('Missing VITE_API_KEY or VITE_FOLDER_ID');
@@ -118,7 +112,7 @@ export default function App() {
         } catch (error) {
           console.error('Error fetching files:', error);
           setError(`Failed to load tournaments: ${error.message}. Please try again later.`);
-          break; // Stop fetching if an error occurs
+          break;
         }
       } while (nextPageToken);
 
@@ -129,59 +123,51 @@ export default function App() {
     fetchAllFiles().catch(console.error);
   }, []);
 
-  // This is the final filtered and *sorted* list of files that are displayed
   const filteredFiles = useMemo(() => {
-      const now = new Date(); // Get today's date and time for comparison
+      const now = new Date();
 
-      // 1. Filter the files based on search and selected filters
       let filtered = files.filter(f => {
-          // Ensure parsedData is attached, even if it was done elsewhere,
-          // it's good to have it consistent here for safety within the memo.
-          const parsed = f.parsedData || parseFilename(f.name); // Use existing parsedData or parse if not present
-          f.parsedData = parsed; // Attach parsed data to file object for easier access
+          const parsed = f.parsedData || parseFilename(f.name);
+          f.parsedData = parsed;
 
           const matchesSearch = f.name.toLowerCase().includes(search.toLowerCase());
           const matchesMonth = monthFilter === 'All' || parsed.monthYear === monthFilter;
           const matchesCountry = countryFilter === 'All' || parsed.country === countryFilter;
           const matchesType = typeFilter === 'All' || parsed.type === typeFilter;
 
-          // Logic to filter out past events in the default view:
-          // Only show events from today onwards by default if no specific filters are active.
-          // If filters (month, country, type, search) are applied, assume the user might want to see all dates matching those filters.
-          const isAnyFilterActive = search !== '' || monthFilter !== 'All' || countryFilter !== 'All' || typeFilter !== 'All';
+          const isUpcoming = parsed.startDate && parsed.startDate >= now;
+          const isCompleted = parsed.startDate && parsed.startDate < now;
 
-          if (!isAnyFilterActive && parsed.startDate && parsed.startDate < now) {
-              // In the default "All" view with no other filters, exclude past events.
-              return false;
+          let matchesStatus = true;
+          if (statusFilter === 'Upcoming') {
+              matchesStatus = isUpcoming;
+          } else if (statusFilter === 'Completed') {
+              matchesStatus = isCompleted;
           }
-
-          return matchesSearch && matchesMonth && matchesCountry && matchesType;
+          
+          return matchesSearch && matchesMonth && matchesCountry && matchesType && matchesStatus;
       });
 
-      // 2. Sort the filtered files by their start date (earliest upcoming first)
       filtered.sort((a, b) => {
           const dateA = a.parsedData.startDate;
           const dateB = b.parsedData.startDate;
 
-          // Handle cases where startDate might be null or invalid
-          // Invalid dates (null) will be pushed to the end of the list.
-          if (!dateA && !dateB) return 0; // Both invalid, maintain original relative order
-          if (!dateA) return 1;          // A is invalid, push A towards the end
-          if (!dateB) return -1;         // B is invalid, push B towards the end (A comes before B)
+          if (!dateA && !dateB) return 0;
+          if (!dateA) return 1;
+          if (!dateB) return -1;
 
-          // Sort valid dates in ascending order (earliest date first)
           return dateA.getTime() - dateB.getTime();
       });
 
       return filtered;
-  }, [files, search, monthFilter, countryFilter, typeFilter]); // Dependencies remain the same
+  }, [files, search, monthFilter, countryFilter, typeFilter, statusFilter]);
 
 
-  // Helper function to get distinct options and their counts for a given attribute
-  const getFilteredCounts = (attribute, currentMonth, currentCountry, currentType, currentSearch) => {
+  const getFilteredCounts = (attribute, currentMonth, currentCountry, currentType, currentSearch, currentStatus) => {
     const counts = new Map();
+    const now = new Date();
     files.forEach(file => {
-      const parsed = parseFilename(file.name); // Re-parse each file for consistent data
+      const parsed = parseFilename(file.name);
       const { monthYear, country, type } = parsed;
       const matchesSearch = file.name.toLowerCase().includes(currentSearch.toLowerCase());
 
@@ -190,7 +176,16 @@ export default function App() {
         (attribute === 'country'   || currentCountry === 'All' || country === currentCountry) &&
         (attribute === 'type'      || currentType === 'All' || type === currentType);
 
-      if (matchesSearch && matchesOtherFilters) {
+      const isUpcoming = parsed.startDate && parsed.startDate >= now;
+      const isCompleted = parsed.startDate && parsed.startDate < now;
+      let matchesStatus = true;
+      if (currentStatus === 'Upcoming') {
+          matchesStatus = isUpcoming;
+      } else if (currentStatus === 'Completed') {
+          matchesStatus = isCompleted;
+      }
+
+      if (matchesSearch && matchesOtherFilters && matchesStatus) {
         const value = parsed[attribute];
         if (value) {
           counts.set(value, (counts.get(value) || 0) + 1);
@@ -200,20 +195,17 @@ export default function App() {
     return counts;
   };
 
-  // Define a fixed order for months
   const MONTH_ORDER = [
     "January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December"
   ];
 
-  // Helper function to extract month name (e.g., "August" from "August2025")
   const getMonthName = (monthYearString) => {
     if (!monthYearString) return '';
     const firstDigitIndex = monthYearString.search(/\d/);
     return firstDigitIndex !== -1 ? monthYearString.substring(0, firstDigitIndex) : monthYearString;
   };
 
-  // Helper function to extract year (e.g., "2025" from "August2025")
   const getYear = (monthYearString) => {
     if (!monthYearString) return 0;
     const yearMatch = monthYearString.match(/\d{4}/);
@@ -221,9 +213,8 @@ export default function App() {
   };
 
 
-  // Derive select options with counts, now dynamically updating based on other filters
   const monthOptions = useMemo(() => {
-    const counts = getFilteredCounts('monthYear', 'All', countryFilter, typeFilter, search);
+    const counts = getFilteredCounts('monthYear', 'All', countryFilter, typeFilter, search, statusFilter);
     const uniqueMonths = Array.from(counts.keys());
 
     const sortedMonths = uniqueMonths.sort((a, b) => {
@@ -231,7 +222,7 @@ export default function App() {
       const yearB = getYear(b);
 
       if (yearA !== yearB) {
-        return yearA - yearB; // Sort by year first
+        return yearA - yearB;
       }
 
       const monthA = getMonthName(a);
@@ -240,16 +231,14 @@ export default function App() {
       const indexA = MONTH_ORDER.indexOf(monthA);
       const indexB = MONTH_ORDER.indexOf(monthB);
 
-      return indexA - indexB; // Then sort by chronological month order
+      return indexA - indexB;
     });
 
-    // Determine if we have multiple years for the same month name
     const monthNameOccurrences = new Map();
     uniqueMonths.forEach(m => {
         const name = getMonthName(m);
         monthNameOccurrences.set(name, (monthNameOccurrences.get(name) || 0) + 1);
     });
-
 
     return ['All', ...sortedMonths].map(m => {
       if (m === 'All') {
@@ -259,51 +248,55 @@ export default function App() {
       const year = getYear(m);
       
       let displayLabel = monthName;
-      // If a month name appears in more than one year, add the year to distinguish it
       if (monthNameOccurrences.get(monthName) > 1) {
           displayLabel += ` ${year}`;
       }
       
       return {
-        value: m, // Keep the full "MonthYear" string as the value for accurate filtering
-        label: `${displayLabel} (${counts.get(m) || 0})` // Append count
+        value: m,
+        label: `${displayLabel} (${counts.get(m) || 0})`
       };
     });
-  }, [files, search, countryFilter, typeFilter]);
+  }, [files, search, countryFilter, typeFilter, statusFilter]);
 
 
   const countryOptions = useMemo(() => {
-    const counts = getFilteredCounts('country', monthFilter, 'All', typeFilter, search);
+    const counts = getFilteredCounts('country', monthFilter, 'All', typeFilter, search, statusFilter);
     const s = new Set(Array.from(counts.keys()));
     const sortedCountries = Array.from(s).sort();
     return ['All', ...sortedCountries].map(c => ({
       value: c,
       label: c === 'All' ? 'All' : `${c} (${counts.get(c) || 0})`
     }));
-  }, [files, search, monthFilter, typeFilter]);
+  }, [files, search, monthFilter, typeFilter, statusFilter]);
 
 
   const typeOptions = useMemo(() => {
-    const counts = getFilteredCounts('type', monthFilter, countryFilter, 'All', search);
+    const counts = getFilteredCounts('type', monthFilter, countryFilter, 'All', search, statusFilter);
     const s = new Set(Array.from(counts.keys()));
     const sortedTypes = Array.from(s).sort();
     return ['All', ...sortedTypes].map(t => ({
       value: t,
       label: t === 'All' ? 'All' : `${t} (${counts.get(t) || 0})`
     }));
-  }, [files, search, monthFilter, countryFilter]);
+  }, [files, search, monthFilter, countryFilter, statusFilter]);
 
-  // Function to check if any filters are active
+  const statusOptions = useMemo(() => ([
+    { value: 'All', label: 'All' },
+    { value: 'Upcoming', label: 'Upcoming' },
+    { value: 'Completed', label: 'Completed' },
+  ]), []);
+
   const areFiltersActive = useMemo(() => {
-    return search !== '' || monthFilter !== 'All' || countryFilter !== 'All' || typeFilter !== 'All';
-  }, [search, monthFilter, countryFilter, typeFilter]);
+    return search !== '' || monthFilter !== 'All' || countryFilter !== 'All' || typeFilter !== 'All' || statusFilter !== 'Upcoming';
+  }, [search, monthFilter, countryFilter, typeFilter, statusFilter]);
 
-  // Function to clear all filters
   const clearFilters = useCallback(() => {
     setSearch('');
     setMonth('All');
     setCountry('All');
     setType('All');
+    setStatusFilter('Upcoming');
   }, []);
 
 
@@ -322,7 +315,6 @@ export default function App() {
       {/* Scrolling Disclaimer Banner */}
       <div className="w-full bg-orange-200 text-gray-800 py-2 overflow-hidden relative shadow-md">
         <p className="text-sm font-medium animate-scroll">
-          {/* Repeated message for continuous scroll. Add more repetitions if necessary for wider screens. */}
           <span className="inline-block px-8">While we strive for accuracy, event details can change. We recommend contacting organizers for confirmation.</span>
           <span className="inline-block px-8">While we strive for accuracy, event details can change. We recommend contacting organizers for confirmation.</span>
           <span className="inline-block px-8">While we strive for accuracy, event details can change. We recommend contacting organizers for confirmation.</span>
@@ -357,7 +349,7 @@ export default function App() {
       {/* Filters Section */}
       <section className="w-full bg-orange-100 py-10">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-6 items-end">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-7 items-end">
             {/* Search Input */}
             <div className="md:col-span-2">
               <label htmlFor="search-input" className="block mb-1 text-sm font-medium text-gray-700">Search</label>
@@ -367,50 +359,96 @@ export default function App() {
                 placeholder="Search tournaments…"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className={`${COMMON_BORDER} ${COMMON_BG} ${COMMON_TEXT} ${COMMON_PLACEHOLDER} ${COMMON_FOCUS} rounded-xl px-4 py-2.5 ${COMMON_TRANSITION} w-full`}
+                className={`${COMMON_BORDER} ${COMMON_BG} ${COMMON_TEXT} ${COMMON_PLACEHOLDER} ${COMMON_FOCUS} rounded-xl px-4 py-2.5 ${COMMON_TRANSITION} w-full ${COMMON_FORM_HEIGHT}`}
               />
             </div>
             {/* Month Filter */}
             <div>
               <label htmlFor="month-select" className="block mb-1 text-sm font-medium text-gray-700">Month</label>
-              <select
-                id="month-select"
-                value={monthFilter}
-                onChange={e => setMonth(e.target.value)}
-                className={`${COMMON_BORDER} ${COMMON_BG} ${COMMON_TEXT} ${COMMON_FOCUS} rounded-xl px-4 py-2.5 ${COMMON_TRANSITION} w-full`}
-              >
-                {monthOptions.map(m => (
-                  <option key={m.value} value={m.value}>{m.label}</option>
-                ))}
-              </select>
+              <div className="relative"> {/* Added relative positioning wrapper */}
+                <select
+                  id="month-select"
+                  value={monthFilter}
+                  onChange={e => setMonth(e.target.value)}
+                  className={`${COMMON_BORDER} ${COMMON_BG} ${COMMON_TEXT} ${COMMON_FOCUS} rounded-xl px-4 py-2.5 pr-10 ${COMMON_TRANSITION} w-full appearance-none ${COMMON_FORM_HEIGHT}`}
+                >
+                  {monthOptions.map(m => (
+                    <option key={m.value} value={m.value}>{m.label}</option>
+                  ))}
+                </select>
+                {/* Custom arrow icon */}
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                  <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              </div>
             </div>
             {/* Country Filter */}
             <div>
               <label htmlFor="country-select" className="block mb-1 text-sm font-medium text-gray-700">Country</label>
-              <select
-                id="country-select"
-                value={countryFilter}
-                onChange={e => setCountry(e.target.value)}
-                className={`${COMMON_BORDER} ${COMMON_BG} ${COMMON_TEXT} ${COMMON_FOCUS} rounded-xl px-4 py-2.5 ${COMMON_TRANSITION} w-full`}
-              >
-                {countryOptions.map(c => (
-                  <option key={c.value} value={c.value}>{c.label}</option>
-                ))}
-              </select>
+              <div className="relative"> {/* Added relative positioning wrapper */}
+                <select
+                  id="country-select"
+                  value={countryFilter}
+                  onChange={e => setCountry(e.target.value)}
+                  className={`${COMMON_BORDER} ${COMMON_BG} ${COMMON_TEXT} ${COMMON_FOCUS} rounded-xl px-4 py-2.5 pr-10 ${COMMON_TRANSITION} w-full appearance-none ${COMMON_FORM_HEIGHT}`}
+                >
+                  {countryOptions.map(c => (
+                    <option key={c.value} value={c.value}>{c.label}</option>
+                  ))}
+                </select>
+                {/* Custom arrow icon */}
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                  <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              </div>
             </div>
             {/* Type Filter */}
             <div>
               <label htmlFor="type-select" className="block mb-1 text-sm font-medium text-gray-700">Type</label>
-              <select
-                id="type-select"
-                value={typeFilter}
-                onChange={e => setType(e.target.value)}
-                className={`${COMMON_BORDER} ${COMMON_BG} ${COMMON_TEXT} ${COMMON_FOCUS} rounded-xl px-4 py-2.5 ${COMMON_TRANSITION} w-full`}
-              >
-                {typeOptions.map(t => (
-                  <option key={t.value} value={t.value}>{t.label}</option>
-                ))}
-              </select>
+              <div className="relative"> {/* Added relative positioning wrapper */}
+                <select
+                  id="type-select"
+                  value={typeFilter}
+                  onChange={e => setType(e.target.value)}
+                  className={`${COMMON_BORDER} ${COMMON_BG} ${COMMON_TEXT} ${COMMON_FOCUS} rounded-xl px-4 py-2.5 pr-10 ${COMMON_TRANSITION} w-full appearance-none ${COMMON_FORM_HEIGHT}`}
+                >
+                  {typeOptions.map(t => (
+                    <option key={t.value} value={t.value}>{t.label}</option>
+                  ))}
+                </select>
+                {/* Custom arrow icon */}
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                  <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+            {/* Status Filter */}
+            <div>
+              <label htmlFor="status-select" className="block mb-1 text-sm font-medium text-gray-700">Status</label>
+              <div className="relative"> {/* Added relative positioning wrapper */}
+                <select
+                  id="status-select"
+                  value={statusFilter}
+                  onChange={e => setStatusFilter(e.target.value)}
+                  className={`${COMMON_BORDER} ${COMMON_BG} ${COMMON_TEXT} ${COMMON_FOCUS} rounded-xl px-4 py-2.5 pr-10 ${COMMON_TRANSITION} w-full appearance-none ${COMMON_FORM_HEIGHT}`}
+                >
+                  {statusOptions.map(s => (
+                    <option key={s.value} value={s.value}>{s.label}</option>
+                  ))}
+                </select>
+                {/* Custom arrow icon */}
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                  <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              </div>
             </div>
             {/* Clear Filters Button */}
             <div className="mt-4 md:mt-0">
