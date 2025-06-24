@@ -54,15 +54,21 @@ export default function App() {
   const [monthFilter, setMonth]   = useState('All');
   const [countryFilter, setCountry] = useState('All');
   const [typeFilter, setType]     = useState('All');
+  const [loading, setLoading]     = useState(true); // NEW: Add loading state
+  const [error, setError]         = useState(null); // NEW: Add error state for API issues
 
   // fetch PDF list
   useEffect(() => {
     if (!API_KEY || !FOLDER_ID) {
       console.error('Missing VITE_API_KEY or VITE_FOLDER_ID');
+      setError('Configuration error: API Key or Folder ID is missing. Please check your .env file.'); // NEW: Set user-friendly error
+      setLoading(false); // NEW: Stop loading
       return;
     }
 
     const fetchAllFiles = async () => {
+      setLoading(true); // NEW: Start loading
+      setError(null);   // NEW: Clear previous errors
       let allFiles = [];
       let nextPageToken = null;
 
@@ -88,14 +94,16 @@ export default function App() {
           nextPageToken = data.nextPageToken;
         } catch (error) {
           console.error('Error fetching files:', error);
+          setError(`Failed to load tournaments: ${error.message}. Please try again later.`); // NEW: Set user-friendly error
           break; // Stop fetching if an error occurs
         }
       } while (nextPageToken);
 
       setFiles(allFiles);
+      setLoading(false); // NEW: Stop loading when done or error
     };
 
-    fetchAllFiles().catch(console.error);
+    fetchAllFiles().catch(console.error); // Catch any unhandled errors from fetchAllFiles
   }, []);
 
   // toggle the <html class="dark">
@@ -342,9 +350,37 @@ export default function App() {
       {/* List */}
       <div className="w-full bg-orange-100 dark:bg-gray-800 py-10">
         <div className="max-w-7xl mx-auto px-8 space-y-12">
-          {filteredFiles.length === 0 ? (
-            <p className="text-center text-gray-600">No tournaments found.</p>
-          ) : (
+          {error && ( // NEW: Display error message if there's an error
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+              <strong className="font-bold">Error:</strong>
+              <span className="block sm:inline"> {error}</span>
+            </div>
+          )}
+
+          {loading && !error ? ( // NEW: Display loading state
+            <div className="text-center text-gray-600 dark:text-gray-300 py-10">
+              <svg className="animate-spin h-8 w-8 text-orange-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <p className="mt-3 text-lg font-medium">Loading tournaments...</p>
+            </div>
+          ) : filteredFiles.length === 0 && !error ? ( // NEW: Display improved empty state only when not loading and no error
+            <div className="text-center text-gray-600 dark:text-gray-300 py-10">
+              <p className="text-xl font-semibold mb-2">No tournaments found!</p>
+              <p className="text-md">
+                Try adjusting your filters or clearing them to see more results.
+              </p>
+              {(search !== '' || monthFilter !== 'All' || countryFilter !== 'All' || typeFilter !== 'All') && (
+                <button
+                  onClick={clearFilters}
+                  className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-orange-500 hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
+                >
+                  Clear All Filters
+                </button>
+              )}
+            </div>
+          ) : ( // NEW: Display cards only when not loading, no error, and files exist
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredFiles.map(f => (
                 <TournamentCard key={f.id} file={f} />
