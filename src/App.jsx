@@ -54,21 +54,21 @@ export default function App() {
   const [monthFilter, setMonth]   = useState('All');
   const [countryFilter, setCountry] = useState('All');
   const [typeFilter, setType]     = useState('All');
-  const [loading, setLoading]     = useState(true); // NEW: Add loading state
-  const [error, setError]         = useState(null); // NEW: Add error state for API issues
+  const [loading, setLoading]     = useState(true);
+  const [error, setError]         = useState(null);
 
   // fetch PDF list
   useEffect(() => {
     if (!API_KEY || !FOLDER_ID) {
       console.error('Missing VITE_API_KEY or VITE_FOLDER_ID');
-      setError('Configuration error: API Key or Folder ID is missing. Please check your .env file.'); // NEW: Set user-friendly error
-      setLoading(false); // NEW: Stop loading
+      setError('Configuration error: API Key or Folder ID is missing. Please check your .env file.');
+      setLoading(false);
       return;
     }
 
     const fetchAllFiles = async () => {
-      setLoading(true); // NEW: Start loading
-      setError(null);   // NEW: Clear previous errors
+      setLoading(true);
+      setError(null);
       let allFiles = [];
       let nextPageToken = null;
 
@@ -94,16 +94,16 @@ export default function App() {
           nextPageToken = data.nextPageToken;
         } catch (error) {
           console.error('Error fetching files:', error);
-          setError(`Failed to load tournaments: ${error.message}. Please try again later.`); // NEW: Set user-friendly error
+          setError(`Failed to load tournaments: ${error.message}. Please try again later.`);
           break; // Stop fetching if an error occurs
         }
       } while (nextPageToken);
 
       setFiles(allFiles);
-      setLoading(false); // NEW: Stop loading when done or error
+      setLoading(false);
     };
 
-    fetchAllFiles().catch(console.error); // Catch any unhandled errors from fetchAllFiles
+    fetchAllFiles().catch(console.error);
   }, []);
 
   // toggle the <html class="dark">
@@ -159,6 +159,13 @@ export default function App() {
     return firstDigitIndex !== -1 ? monthYearString.substring(0, firstDigitIndex) : monthYearString;
   };
 
+  // Helper function to extract year (e.g., "2025" from "August2025")
+  const getYear = (monthYearString) => {
+    if (!monthYearString) return 0;
+    const yearMatch = monthYearString.match(/\d{4}/);
+    return yearMatch ? parseInt(yearMatch[0], 10) : 0;
+  };
+
 
   // Derive select options with counts, now dynamically updating based on other filters
   const monthOptions = useMemo(() => {
@@ -166,25 +173,48 @@ export default function App() {
     const uniqueMonths = Array.from(counts.keys());
 
     const sortedMonths = uniqueMonths.sort((a, b) => {
-      const monthA = getMonthName(a);
-      const yearA = parseInt(a.match(/\d{4}/)?.[0] || '0', 10);
-      const monthB = getMonthName(b);
-      const yearB = parseInt(b.match(/\d{4}/)?.[0] || '0', 10);
+      const yearA = getYear(a);
+      const yearB = getYear(b);
 
       if (yearA !== yearB) {
-        return yearA - yearB;
+        return yearA - yearB; // Sort by year first
       }
+
+      const monthA = getMonthName(a);
+      const monthB = getMonthName(b);
 
       const indexA = MONTH_ORDER.indexOf(monthA);
       const indexB = MONTH_ORDER.indexOf(monthB);
 
-      return indexA - indexB;
+      return indexA - indexB; // Then sort by chronological month order
     });
 
-    return ['All', ...sortedMonths].map(m => ({
-      value: m,
-      label: m === 'All' ? 'All' : `${m} (${counts.get(m) || 0})`
-    }));
+    // Determine if we have multiple years for the same month name
+    const monthNameOccurrences = new Map();
+    uniqueMonths.forEach(m => {
+        const name = getMonthName(m);
+        monthNameOccurrences.set(name, (monthNameOccurrences.get(name) || 0) + 1);
+    });
+
+
+    return ['All', ...sortedMonths].map(m => {
+      if (m === 'All') {
+        return { value: 'All', label: 'All' };
+      }
+      const monthName = getMonthName(m);
+      const year = getYear(m);
+      
+      let displayLabel = monthName;
+      // If a month name appears in more than one year, add the year to distinguish it
+      if (monthNameOccurrences.get(monthName) > 1) {
+          displayLabel += ` ${year}`;
+      }
+      
+      return {
+        value: m, // Keep the full "MonthYear" string as the value for accurate filtering
+        label: `${displayLabel} (${counts.get(m) || 0})` // Append count
+      };
+    });
   }, [files, search, countryFilter, typeFilter]);
 
 
@@ -209,6 +239,11 @@ export default function App() {
     }));
   }, [files, search, monthFilter, countryFilter]);
 
+  // Function to check if any filters are active
+  const areFiltersActive = useMemo(() => {
+    return search !== '' || monthFilter !== 'All' || countryFilter !== 'All' || typeFilter !== 'All';
+  }, [search, monthFilter, countryFilter, typeFilter]);
+
   // Function to clear all filters
   const clearFilters = () => {
     setSearch('');
@@ -230,7 +265,7 @@ export default function App() {
         <p className="mt-2 text-sm text-orange-800 italic">Browse and filter the best offline chess events</p>
       </header>
 
-      {/* NEW: Scrolling Disclaimer Banner */}
+      {/* Scrolling Disclaimer Banner */}
       <div className="w-full bg-orange-200 text-gray-800 py-2 overflow-hidden relative shadow-md">
         <p className="text-sm font-medium animate-scroll">
           {/* Repeated message for continuous scroll. Add more repetitions if necessary for wider screens. */}
@@ -265,11 +300,11 @@ export default function App() {
         </p>
       </div>
 
-      {/* Filters Section - Corrected Layout */}
+      {/* Filters Section */}
       <section className="w-full bg-orange-100 py-10">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-6 items-end"> {/* Changed to 6 columns for desktop */}
-            {/* Search Input - takes 2 columns on desktop */}
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-6 items-end">
+            {/* Search Input */}
             <div className="md:col-span-2">
               <label htmlFor="search-input" className="block mb-1 text-sm font-medium text-gray-700">Search</label>
               <input
@@ -282,7 +317,7 @@ export default function App() {
               />
             </div>
             {/* Month Filter */}
-            <div> {/* This will take 1 column */}
+            <div>
               <label htmlFor="month-select" className="block mb-1 text-sm font-medium text-gray-700">Month</label>
               <select
                 id="month-select"
@@ -296,7 +331,7 @@ export default function App() {
               </select>
             </div>
             {/* Country Filter */}
-            <div> {/* This will take 1 column */}
+            <div>
               <label htmlFor="country-select" className="block mb-1 text-sm font-medium text-gray-700">Country</label>
               <select
                 id="country-select"
@@ -309,8 +344,8 @@ export default function App() {
                 ))}
               </select>
             </div>
-            {/* Type Filter - Added back! */}
-            <div> {/* This will take 1 column */}
+            {/* Type Filter */}
+            <div>
               <label htmlFor="type-select" className="block mb-1 text-sm font-medium text-gray-700">Type</label>
               <select
                 id="type-select"
@@ -323,23 +358,30 @@ export default function App() {
                 ))}
               </select>
             </div>
-            {/* Clear Filters Button - Now positioned in the last column */}
-            <div className="mt-4 md:mt-0"> {/* This will take 1 column */}
+            {/* Clear Filters Button - Refined */}
+            <div className="mt-4 md:mt-0">
               <button
                 onClick={clearFilters}
+                // Conditionally apply classes based on whether filters are active
                 className={`
                   w-full
                   inline-flex items-center justify-center
                   px-4 py-2.5
-                  border border-gray-300 rounded-xl
+                  rounded-xl
                   shadow-sm
                   text-sm font-medium
-                  text-gray-700 hover:text-gray-900
-                  bg-white hover:bg-gray-50
-                  focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-300
+                  ${areFiltersActive
+                    ? 'bg-red-500 hover:bg-red-600 text-white focus:ring-red-300' // Active state
+                    : 'bg-gray-200 text-gray-500 cursor-not-allowed border border-gray-300' // Inactive state
+                  }
+                  focus:outline-none focus:ring-2 focus:ring-offset-2
                   ${COMMON_TRANSITION}
                 `}
+                disabled={!areFiltersActive} // Disable button if no filters are active
               >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
                 Clear Filters
               </button>
             </div>
@@ -350,14 +392,14 @@ export default function App() {
       {/* List */}
       <div className="w-full bg-orange-100 dark:bg-gray-800 py-10">
         <div className="max-w-7xl mx-auto px-8 space-y-12">
-          {error && ( // NEW: Display error message if there's an error
+          {error && (
             <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
               <strong className="font-bold">Error:</strong>
               <span className="block sm:inline"> {error}</span>
             </div>
           )}
 
-          {loading && !error ? ( // NEW: Display loading state
+          {loading && !error ? (
             <div className="text-center text-gray-600 dark:text-gray-300 py-10">
               <svg className="animate-spin h-8 w-8 text-orange-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -365,13 +407,13 @@ export default function App() {
               </svg>
               <p className="mt-3 text-lg font-medium">Loading tournaments...</p>
             </div>
-          ) : filteredFiles.length === 0 && !error ? ( // NEW: Display improved empty state only when not loading and no error
+          ) : filteredFiles.length === 0 && !error ? (
             <div className="text-center text-gray-600 dark:text-gray-300 py-10">
               <p className="text-xl font-semibold mb-2">No tournaments found!</p>
               <p className="text-md">
                 Try adjusting your filters or clearing them to see more results.
               </p>
-              {(search !== '' || monthFilter !== 'All' || countryFilter !== 'All' || typeFilter !== 'All') && (
+              {areFiltersActive && ( // Conditionally show clear filters button in empty state
                 <button
                   onClick={clearFilters}
                   className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-orange-500 hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
@@ -380,7 +422,7 @@ export default function App() {
                 </button>
               )}
             </div>
-          ) : ( // NEW: Display cards only when not loading, no error, and files exist
+          ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredFiles.map(f => (
                 <TournamentCard key={f.id} file={f} />
