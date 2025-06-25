@@ -310,7 +310,7 @@ export default function App() {
           <span>🏆</span>
           Global Chess Tournament Finder
         </h1>
-        <p className="mt-2 text-sm text-orange-800 italic">Simplifying your search for international chess tournaments</p>
+        <p className="mt-2 text-sm text-orange-800 italic">Simplifying your search for chess tournaments across the globe</p>
       </header>
 
       {/* Scrolling Disclaimer Banner */}
