@@ -4,6 +4,7 @@ import { TournamentCard } from './TournamentCard';
 const API_KEY = import.meta.env.VITE_API_KEY;
 const FOLDER_ID = import.meta.env.VITE_FOLDER_ID;
 
+// ... (parseFilename function remains the same)
 function parseFilename(name) {
   const noExt = name.replace(/\.pdf$/i, '');
   const parts = noExt.split(' ').filter(p => p.trim() !== '');
@@ -55,7 +56,6 @@ function parseFilename(name) {
   };
 }
 
-
 export default function App() {
   const [files, setFiles] = useState([]);
   const [search, setSearch] = useState('');
@@ -65,6 +65,7 @@ export default function App() {
   const [statusFilter, setStatusFilter] = useState('Upcoming');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
 
   const COMMON_BORDER       = 'border border-gray-300';
   const COMMON_BG           = 'bg-white';
@@ -73,7 +74,6 @@ export default function App() {
   const COMMON_FOCUS        = 'focus:outline-none focus:ring-2 focus:ring-blue-400';
   const COMMON_TRANSITION   = 'transition';
   const COMMON_FORM_HEIGHT  = 'h-11';
-
 
   useEffect(() => {
     if (!API_KEY || !FOLDER_ID) {
@@ -124,7 +124,7 @@ export default function App() {
   }, []);
 
   const filteredFiles = useMemo(() => {
-      const now = new Date(); // Using current time: Tuesday, June 24, 2025 at 10:42:14 PM IST.
+      const now = new Date(); 
 
       let filtered = files.filter(f => {
           const parsed = f.parsedData || parseFilename(f.name);
@@ -297,6 +297,7 @@ export default function App() {
     setCountry('All');
     setType('All');
     setStatusFilter('Upcoming');
+    setShowMobileFilters(false); // Close filters after clearing on mobile
   }, []);
 
 
@@ -309,7 +310,7 @@ export default function App() {
           <span>🏆</span>
           Global Chess Tournament Finder
         </h1>
-        <p className="mt-2 text-sm text-orange-800 italic">Simplifying your search for national & international chess tournaments</p>
+        <p className="mt-2 text-sm text-orange-800 italic">Simplifying your search for international chess tournaments</p>
       </header>
 
       {/* Scrolling Disclaimer Banner */}
@@ -347,9 +348,46 @@ export default function App() {
       </div>
 
       {/* Filters Section */}
-      <section className="w-full bg-orange-100 py-10">
+      <section className="w-full bg-orange-100 py-6 sm:py-10">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-7 items-end">
+          {/* Mobile Filter Toggle Button (visible on small screens) */}
+          <div className="md:hidden flex justify-between items-center mb-4">
+            <button
+              onClick={() => setShowMobileFilters(!showMobileFilters)}
+              className="flex items-center px-4 py-2 bg-orange-500 text-white rounded-xl shadow-sm text-base font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-300 transition-all duration-300"
+            >
+              Filters
+              <svg className={`ml-2 h-5 w-5 transition-transform duration-300 ${showMobileFilters ? 'rotate-180' : ''}`} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+            </button>
+            {/* Clear Filters button - always visible on mobile */}
+            <button
+              onClick={clearFilters}
+              className={`
+                inline-flex items-center justify-center
+                px-4 py-2.5
+                rounded-xl
+                shadow-sm
+                text-sm font-medium
+                ${areFiltersActive
+                  ? 'bg-red-500 hover:bg-red-600 text-white focus:ring-red-300'
+                  : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200 opacity-70'
+                }
+                focus:outline-none focus:ring-2 focus:ring-offset-2
+                ${COMMON_TRANSITION}
+              `}
+              disabled={!areFiltersActive}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              Clear
+            </button>
+          </div>
+
+          {/* Filter Grid - hidden on mobile by default, shown when showMobileFilters is true or on md screens and up */}
+          <div className={`grid grid-cols-1 gap-y-4 md:gap-6 md:grid-cols-7 items-end ${showMobileFilters ? 'block' : 'hidden md:grid'}`}>
             {/* Search Input */}
             <div className="md:col-span-2">
               <label htmlFor="search-input" className="block mb-1 text-sm font-medium text-gray-700">Search</label>
@@ -446,8 +484,8 @@ export default function App() {
                 </div>
               </div>
             </div>
-            {/* Clear Filters Button */}
-            <div className="mt-4 md:mt-0">
+            {/* Original Clear Filters Button - now hidden on mobile */}
+            <div className="mt-4 md:mt-0 hidden md:block">
               <button
                 onClick={clearFilters}
                 className={`
@@ -459,7 +497,7 @@ export default function App() {
                   text-sm font-medium
                   ${areFiltersActive
                     ? 'bg-red-500 hover:bg-red-600 text-white focus:ring-red-300'
-                    : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200 opacity-70' // Updated disabled styles
+                    : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200 opacity-70'
                   }
                   focus:outline-none focus:ring-2 focus:ring-offset-2
                   ${COMMON_TRANSITION}
@@ -478,7 +516,7 @@ export default function App() {
 
       {/* List Section */}
       <div className="w-full bg-orange-100 py-10">
-        <div className="max-w-7xl mx-auto px-8 space-y-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 space-y-12">
           {error && (
             <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
               <strong className="font-bold">Error:</strong>
@@ -510,7 +548,7 @@ export default function App() {
               )}
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-6"> {/* MODIFIED GRID CLASSES */}
               {filteredFiles.map(f => (
                 <TournamentCard key={f.id} file={f} />
               ))}

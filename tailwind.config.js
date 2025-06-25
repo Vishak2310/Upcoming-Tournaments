@@ -1,13 +1,15 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  // use the “class” strategy so we can toggle via JS
-  darkMode: 'class',
   content: [
     "./index.html",
-    "./src/**/*.{js,jsx,ts,tsx}"
+    "./src/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
-    extend: {}
+    extend: {
+      screens: {
+        'xs': '475px', // Custom extra-small breakpoint
+      },
+    },
   },
-  plugins: []
+  plugins: [],
 }
