@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { TournamentCard } from './TournamentCard';
+import { Analytics } from '@vercel/analytics/react';
+import { SpeedInsights } from "@vercel/speed-insights/react";
 
 const API_KEY = import.meta.env.VITE_API_KEY;
 const FOLDER_ID = import.meta.env.VITE_FOLDER_ID;
@@ -556,6 +558,8 @@ export default function App() {
           )}
         </div>
       </div>
+       <Analytics />
+       <SpeedInsights />
     </div>
   );
 }
